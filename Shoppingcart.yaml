@@ -30,7 +30,7 @@ tags:
   - name: Orders
     description: Órdenes confirmadas
   - name: Promo
-    description: Gestión de descuentos
+    description: Gestion de descuentos
 
 paths:
 
@@ -288,7 +288,7 @@ paths:
               $ref: '#/components/schemas/OrdenCreacion'
       responses:
         '201':
-          description: Orden creada con éxito.
+          description: Orden creada con exito.
           content:
             application/json:
               schema:
@@ -381,14 +381,14 @@ components:
           type: integer
           format: int64
           description: ID del producto.
-          example: 101
+          example: 001
         nombre:
           type: string
           description: Nombre del producto.
           example: "Audífonos Bluetooth Pro"
         descripcion:
           type: string
-          description: Descripción corta del producto.
+          description: Descripcion del producto.
           example: "Audífonos inalámbricos con cancelación de ruido."
         unitPrice:
           type: number
@@ -409,7 +409,7 @@ components:
           example: "Electronica"
         publicado:
           type: boolean
-          description: Indica si el producto está visible en la tienda.
+          description: Indica si el producto está visible
           example: true
       required:
         - nombre
@@ -528,7 +528,7 @@ components:
         actualizadoEn:
           type: string
           format: date-time
-          description: Última fecha/hora de modificación del carrito.
+          description: Última fecha/hora de modificación del carito.
           example: "2025-11-02T15:30:00Z"
       required:
         - cartId
@@ -610,7 +610,7 @@ components:
 
   responses:
     NotFoundError:
-      description: Recurso no encontrado. El ID no existe.
+      description: El ID no existe.
       content:
         application/json:
           schema:
