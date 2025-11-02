@@ -1,0 +1,628 @@
+openapi: 3.1.0
+info:
+  title: Shopping Cart Wishlist API
+  description: |
+    API RESTful para un ecommerce con carrito de compras.
+    Permite gestionar clientes, productos, carritos activos, artículos dentro del carrito, creación de órdenes y checkout.
+  version: "1.0.0"
+  contact:
+    name: Equipo 22
+    email: A01272969@tec.mx
+
+servers:
+  - url: https://api.shop.example.com/v1
+    description: Producción
+  - url: http://localhost:8080/v1
+    description: Desarrollo local
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: Auth
+    description: Manejo de sesión
+  - name: Users
+    description: Gestión de usuarios
+  - name: Products
+    description: Catálogo de productos
+  - name: Cart
+    description: Carrito de compras
+  - name: Orders
+    description: Órdenes confirmadas
+  - name: Promo
+    description: Gestión de descuentos
+
+paths:
+
+  /products:
+    get:
+      tags:
+        - Products
+      summary: Lista de productos
+      operationId: getProducts
+      parameters:
+        - name: categoria
+          in: query
+          description: Filtra por categoría del producto
+          required: false
+          schema:
+            type: string
+        - name: webseq
+          in: query
+          description: Posición del producto en la página
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: availableQty
+          in: query
+          description: El producto tiene existencias. Si es true, solo devuelve productos con stock disponible
+          required: false
+          schema:
+            type: boolean
+            default: true
+      responses:
+        '200':
+          description: Lista de productos retornada con éxito.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Producto'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+    post:
+      tags:
+        - Products
+      summary: Registrar un nuevo producto
+      operationId: createProduct
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductCreacion'
+      responses:
+        '201':
+          description: Producto creado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+
+  /products/{productId}:
+    parameters:
+      - name: productId
+        in: path
+        description: ID del producto
+        required: true
+        schema:
+          type: integer
+          format: int64
+    get:
+      tags:
+        - Products
+      summary: Consultar los detalles de un producto por ID
+      operationId: getProductoById
+      responses:
+        '200':
+          description: Detalles del producto
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Producto'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+    put:
+      tags:
+        - Products
+      summary: Modificar los datos completos de un producto
+      operationId: updateProduct
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductoCreacion'
+      responses:
+        '200':
+          description: Información del producto modificada con éxito.
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+    delete:
+      tags:
+        - Products
+      summary: Borrar un producto
+      operationId: deleteProduct
+      responses:
+        '204':
+          description: Producto eliminado (Sin Contenido).
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /products/{productId}/stock:
+    patch:
+      tags:
+        - Products
+      summary: Actualizar el stock disponible de un producto
+      operationId: patchProductStock
+      parameters:
+        - name: productId
+          in: path
+          description: ID del producto a actualizar
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nuevoStock:
+                  type: integer
+                  description: Nueva cantidad disponible en inventario.
+                  example: 42
+      responses:
+        '200':
+          description: Stock actualizado correctamente.
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '403':
+          description: Prohibido. El usuario no tiene permisos para modificar inventario.
+
+  /cart:
+    get:
+      tags:
+        - Cart
+      summary: Revisar los productos en el carrito del cliente
+      operationId: getCustomerCart
+      responses:
+        '200':
+          description: Carrito activo del cliente autenticado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Carrito'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+    delete:
+      tags:
+        - Cart
+      summary: Vaciar el carrito
+      operationId: emptyCart
+      responses:
+        '204':
+          description: Carrito vaciado (Sin Contenido).
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /cart/items:
+    post:
+      tags:
+        - Cart
+      summary: Agregar un producto al carrito
+      operationId: addItemCart
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ItemCarritoAgregar'
+      responses:
+        '201':
+          description: Producto agregado al carrito.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Carrito'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+    patch:
+      tags:
+        - Cart
+      summary: Modificar la cantidad de un producto en el carrito
+      operationId: updateCartQuantity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ItemCarritoActualizarCantidad'
+      responses:
+        '200':
+          description: Cantidad actualizada en el carrito.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Carrito'
+        '400':
+          $ref: '#/components/responses/BadRequestError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+    delete:
+      tags:
+        - Cart
+      summary: Eliminar un producto del carrito
+      operationId: deleteCartItem
+      parameters:
+        - name: productId
+          in: query
+          description: ID del producto a eliminar del carrito
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '204':
+          description: Producto eliminado del carrito (Sin Contenido).
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /orders:
+    post:
+      tags:
+        - Orders
+      summary: Crear una orden de compra (checkout)
+      operationId: createOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrdenCreacion'
+      responses:
+        '201':
+          description: Orden creada con éxito.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Orden'
+        '400':
+          description: Error al generar la orden (carrito vacío o datos inválidos).
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+    get:
+      tags:
+        - Orders
+      summary: Obtener las órdenes del cliente autenticado
+      operationId: getCustOrders
+      parameters:
+        - name: status
+          in: query
+          description: Filtra por estatus de la orden (new, quotation, order, cancelled)
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Lista de órdenes del usuario.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Orden'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /orders/{orderId}:
+    parameters:
+      - name: orderId
+        in: path
+        description: ID de la orden.
+        required: true
+        schema:
+          type: integer
+          format: int64
+    get:
+      tags:
+        - Orders
+      summary: Consultar una orden por ID
+      operationId: getOrderById
+      responses:
+        '200':
+          description: Detalles de la orden.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Orden'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+    patch:
+      tags:
+        - Orders
+      summary: Modificar el estatus de una orden
+      operationId: patchOrderStatus
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nuevoEstatus:
+                  type: string
+                  description: Actualizar estatus (new, quotation, order, cancelled)
+                  example: order
+      responses:
+        '200':
+          description: Estatus de la orden actualizado.
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+        '403':
+          description: Prohibido. El usuario no tiene acceso para modificar esta orden.
+
+components:
+
+  schemas:
+
+    Producto:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: ID del producto.
+          example: 101
+        nombre:
+          type: string
+          description: Nombre del producto.
+          example: "Audífonos Bluetooth Pro"
+        descripcion:
+          type: string
+          description: Descripción corta del producto.
+          example: "Audífonos inalámbricos con cancelación de ruido."
+        unitPrice:
+          type: number
+          format: float
+          description: Precio unitario.
+          example: 999.99
+        moneda:
+          type: string
+          description: Moneda del precio.
+          example: MXN
+        stockDisponible:
+          type: integer
+          description: Cantidad disponible en inventario.
+          example: 25
+        categoria:
+          type: string
+          description: Categoría del producto.
+          example: "Electronica"
+        publicado:
+          type: boolean
+          description: Indica si el producto está visible en la tienda.
+          example: true
+      required:
+        - nombre
+        - unitPrice
+        - moneda
+        - stockDisponible
+        - publicado
+
+    ProductoCreacion:
+      type: object
+      description: Modelo para la creación o actualización completa de un producto.
+      allOf:
+        - $ref: '#/components/schemas/Producto'
+        - type: object
+          properties:
+            sku:
+              type: string
+              description: Clave interna del producto.
+              example: "SKU-001"
+          required:
+            - sku
+
+    ItemCarrito:
+      type: object
+      properties:
+        productId:
+          type: integer
+          format: int64
+          description: ID del producto agregado.
+          example: 101
+        productName:
+          type: string
+          description: Nombre del producto al momento de agregarlo.
+          example: "TV Samsung 65in"
+        quantity:
+          type: integer
+          description: Cantidad agregada.
+          example: 1
+        unitPrice:
+          type: number
+          format: float
+          description: Precio unitario.
+          example: 12000
+        lineTotal:
+          type: number
+          format: float
+          description: Subtotal de esa línea (quantity * unitPrice).
+          example: 12000
+      required:
+        - productId
+        - quantity
+        - unitPrice
+        - lineTotal
+
+    ItemCarritoAgregar:
+      type: object
+      description: Datos requeridos para agregar un producto al carrito.
+      properties:
+        productId:
+          type: integer
+          format: int64
+          description: ID del producto.
+          example: 101
+        quantity:
+          type: integer
+          description: Cantidad que se desea agregar.
+          example: 1
+      required:
+        - productId
+        - quantity
+
+    ItemCarritoActualizarCantidad:
+      type: object
+      description: Datos requeridos para modificar la cantidad de un producto ya en el carrito.
+      properties:
+        productId:
+          type: integer
+          format: int64
+          description: ID del producto en el carrito.
+          example: 101
+        quantity:
+          type: integer
+          description: Nueva cantidad.
+          example: 3
+      required:
+        - productId
+        - quantity
+
+    Carrito:
+      type: object
+      properties:
+        cartId:
+          type: integer
+          format: int64
+          description: ID del carrito.
+          example: 1234
+        contactId:
+          type: integer
+          format: int64
+          description: ID del cliente dueño del carrito.
+          example: 987
+        items:
+          type: array
+          description: Lista de productos en el carrito.
+          items:
+            $ref: '#/components/schemas/ItemCarrito'
+        subtotal:
+          type: number
+          format: float
+          description: Suma total de todos los subtotales del carrito.
+          example: 23004.99
+        moneda:
+          type: string
+          description: Moneda de la orden.
+          example: MXN
+        actualizadoEn:
+          type: string
+          format: date-time
+          description: Última fecha/hora de modificación del carrito.
+          example: "2025-11-02T15:30:00Z"
+      required:
+        - cartId
+        - contactId
+        - items
+        - subtotal
+        - moneda
+
+    Orden:
+      type: object
+      properties:
+        orderId:
+          type: integer
+          format: int64
+          description: ID de la orden.
+          example: 56734
+        contactId:
+          type: integer
+          format: int64
+          description: ID del cliente que realizó la compra.
+          example: 1234
+        status:
+          type: string
+          description: Estatus actual de la orden.
+          example: "new"
+        direccionEnvio:
+          type: string
+          description: Dirección de envío proporcionada por el cliente.
+          example: "Av. Reforma 1234, CDMX"
+        total:
+          type: number
+          format: float
+          description: Total a cobrar.
+          example: 12599.98
+        moneda:
+          type: string
+          description: Moneda de la orden.
+          example: MXN
+        items:
+          type: array
+          description: Artículos incluidos en la orden.
+          items:
+            $ref: '#/components/schemas/ItemCarrito'
+        creadaEn:
+          type: string
+          format: date-time
+          description: Fecha en que se generó la orden.
+          example: "2025-11-02T15:35:00Z"
+      required:
+        - orderId
+        - contactId
+        - status
+        - total
+        - moneda
+        - items
+
+    OrdenCreacion:
+      type: object
+      description: Datos requeridos para el checkout.
+      properties:
+        direccionEnvio:
+          type: string
+          description: Dirección donde se entregará el pedido.
+          example: "Av. Reforma 1234, CDMX"
+        metodoPago:
+          type: string
+          description: Método de pago seleccionado.
+          example: "tarjeta_credito"
+      required:
+        - direccionEnvio
+        - metodoPago
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Autenticación mediante un JWT.
+
+  responses:
+    NotFoundError:
+      description: Recurso no encontrado. El ID no existe.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              codigo:
+                type: string
+                example: NOT_FOUND
+              mensaje:
+                type: string
+                example: No se encontró el recurso solicitado.
+    BadRequestError:
+      description: Solicitud incorrecta. Faltan datos requeridos o el formato es inválido.
+    UnauthorizedError:
+      description: Acceso no autorizado. El token es inválido o falta autenticación.
